@@ -1,5 +1,11 @@
 {
   "projects": {
     "default": "set-test-game"
+  },
+  "targets": {},
+  "etags": {
+    "set-test-game": {
+      "extensionInstances": {}
+    }
   }
 }

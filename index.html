@@ -157,12 +157,26 @@
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card';
         cardDiv.dataset.index = index;
-        cardDiv.innerHTML =
-          '<div>' + card.number + '</div>' +
-          '<div>' + card.shading + ' ' + card.color + ' ' + card.shape + '</div>';
+
+        // Construct the image filename based on card attributes
+        const imageName = `${card.shape}_${card.color}_${card.shading}_${card.number}.png`;
+        const imagePath = `images/cards/${imageName}`;
+
+        // Create the image element
+        const cardImage = document.createElement('img');
+        cardImage.src = imagePath;
+        cardImage.alt = `${card.number} ${card.shading} ${card.color} ${card.shape}`;
+        cardImage.style.width = '100%';
+
+        // Append the image to the card div
+        cardDiv.appendChild(cardImage);
+
+        // Add click event listener
         cardDiv.addEventListener('click', function() {
           handleCardClick(index, cardDiv, card);
         });
+
+        // Append the card div to the board
         boardDiv.appendChild(cardDiv);
       });
     }
