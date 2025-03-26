@@ -31,29 +31,86 @@
       max-width: 600px;
       margin: auto;
     }
+
+
+    /* Container to hold sidebar and main content */
+    #container {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    /* Sidebar styling */
+    #sidebar {
+      width: 250px;
+      margin-right: 20px;
+    }
+
+    /* Players section styling */
+    #players {
+      margin-bottom: 20px;
+    }
+
+    /* Chat interface styling */
+    #chat {
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    #chatMessages {
+      height: 200px;
+      overflow-y: auto;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+
+    #chatInput {
+      width: calc(100% - 60px);
+      margin-right: 10px;
+    }
+
+    #sendChatBtn {
+      width: 50px;
+    }
+
+    /* Main content styling */
+    #mainContent {
+      flex-grow: 1;
+    }
+
   </style>
 </head>
 <body>
-  <!-- Join Screen -->
-  <div id="joinScreen">
-    <h2>Join Game</h2>
-    <input type="text" id="playerName" placeholder="Enter your name">
-    <button id="joinBtn">Join Game</button>
-    <div id="joinError" style="color: red;"></div>
-  </div>
-
-  <!-- Main Game Screen -->
-  <div id="gameScreen" style="display: none;">
-    <h2>Online SET Game</h2>
-    <div id="players"></div>
-    <div id="gameBoard"></div>
-    <div id="message"></div>
-    <!-- Admin Controls -->
-    <div id="adminControls" style="margin-top: 20px;">
-      <button id="resetGameBtn">Reset Game</button>
+  <div id="container">
+    <!-- Sidebar for Players and Chat -->
+    <div id="sidebar">
+      <div id="players">
+        <h3>Players</h3>
+        <!-- Player list will be populated here -->
+      </div>
+      <div id="chat">
+        <h3>Chat</h3>
+        <div id="chatMessages">
+          <!-- Chat messages will appear here -->
+        </div>
+        <input type="text" id="chatInput" placeholder="Type a message...">
+        <button id="sendChatBtn">Send</button>
+      </div>
     </div>
 
+    <!-- Main Content -->
+    <div id="mainContent">
+      <!-- Existing game content -->
+      <h2>Online SET Game</h2>
+      <div id="gameBoard"></div>
+      <div id="message"></div>
+      <!-- Admin Controls -->
+      <div id="adminControls" style="margin-top: 20px;">
+        <button id="resetGameBtn">Reset Game</button>
+      </div>
+    </div>
   </div>
+
 
   <!-- Firebase (using compat libraries for simplicity) -->
   <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
@@ -302,6 +359,51 @@
         document.getElementById('gameScreen').style.display = 'block';
       });
     });
+
+
+    // Reference to the chat messages in the database
+    const chatRef = database.ref('chat');
+
+    // Listen for new chat messages
+    chatRef.on('child_added', function(snapshot) {
+      const message = snapshot.val();
+      displayChatMessage(message.name, message.text);
+    });
+
+    // Function to display a chat message
+    function displayChatMessage(name, text) {
+      const chatMessagesDiv = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.textContent = name + ': ' + text;
+      chatMessagesDiv.appendChild(messageDiv);
+      chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Auto-scroll to the latest message
+    }
+
+    // Send chat message
+    document.getElementById('sendChatBtn').addEventListener('click', function() {
+      sendMessage();
+    });
+
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    function sendMessage() {
+      const chatInput = document.getElementById('chatInput');
+      const text = chatInput.value.trim();
+      if (text !== '') {
+        const message = {
+          name: playerName, // Ensure playerName is defined globally
+          text: text,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        };
+        chatRef.push(message);
+        chatInput.value = '';
+      }
+    }
+
   </script>
 </body>
 </html>
