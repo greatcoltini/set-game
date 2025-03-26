@@ -136,50 +136,80 @@
       display: none; /* Hide the game content by default */
     }
 
+    /* Full-screen swirling background */
+    #movingBackground {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1; /* Place it behind all content */
+      background: radial-gradient(circle, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1);
+      background-size: 200% 200%; /* Larger size for smooth animation */
+      animation: swirl 10s infinite linear; /* Swirling animation */
+    }
+
+    /* Swirling animation */
+    @keyframes swirl {
+      0% {
+        background-position: 0% 0%;
+        transform: rotate(0deg);
+      }
+      25% {
+        background-position: 50% 50%;
+        transform: rotate(90deg);
+      }
+      50% {
+        background-position: 100% 100%;
+        transform: rotate(180deg);
+      }
+      75% {
+        background-position: 50% 50%;
+        transform: rotate(270deg);
+      }
+      100% {
+        background-position: 0% 0%;
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Moving background -->
+  <div id="movingBackground"></div>
 
-    <!-- Join Screen -->
-    <div id="joinScreen">
-      <h2>Join Game</h2>
-      <input type="text" id="playerName" placeholder="Enter your name">
-      <button id="joinBtn">Join Game</button>
-      <div id="joinError" style="color: red;"></div>
+  <!-- Join Screen -->
+  <div id="joinScreen">
+    <h2>Join Game</h2>
+    <input type="text" id="playerName" placeholder="Enter your name">
+    <button id="joinBtn">Join Game</button>
+    <div id="joinError" style="color: red;"></div>
+  </div>
+
+  <div id="container">
+    <!-- Sidebar and Main Content -->
+    <div id="sidebar">
+      <div id="players">
+        <h3>Players</h3>
+      </div>
+      <div id="chat">
+        <h3>Chat</h3>
+        <div id="chatMessages"></div>
+        <input type="text" id="chatInput" placeholder="Type a message...">
+        <button id="sendChatBtn">Send</button>
+      </div>
     </div>
-
-    <div id="container">
-      <!-- Sidebar for Players and Chat -->
-      <div id="sidebar">
-        <div id="players">
-          <h3>Players</h3>
-          <!-- Player list will be populated here -->
-        </div>
-        <div id="chat">
-          <h3>Chat</h3>
-          <div id="chatMessages">
-            <!-- Chat messages will appear here -->
-          </div>
-          <input type="text" id="chatInput" placeholder="Type a message...">
-          <button id="sendChatBtn">Send</button>
-        </div>
-    </div>
-
-    <!-- Main Content -->
     <div id="mainContent">
-      <!-- Existing game content -->
       <h2>Online SET Game</h2>
       <div id="gameBoard"></div>
       <div id="deckCount">Cards Remaining: 0</div>
       <div id="message"></div>
-      <!-- Admin Controls -->
-      <div id="adminControls" style="margin-top: 20px;">
+      <div id="adminControls">
         <button id="resetGameBtn">Reset Game</button>
-        <button id="toggleDebugBtn">Toggle Debug</button> <!-- Debug toggle button -->
+        <button id="toggleDebugBtn">Toggle Debug</button>
       </div>
     </div>
   </div>
-
 
   <!-- Firebase (using compat libraries for simplicity) -->
   <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
