@@ -90,25 +90,25 @@
       <div id="joinError" style="color: red;"></div>
     </div>
 
-  <div id="container mainContent" style="display: none">
-    <!-- Sidebar for Players and Chat -->
-    <div id="sidebar">
-      <div id="players">
-        <h3>Players</h3>
-        <!-- Player list will be populated here -->
-      </div>
-      <div id="chat">
-        <h3>Chat</h3>
-        <div id="chatMessages">
-          <!-- Chat messages will appear here -->
+    <div id="container">
+      <!-- Sidebar for Players and Chat -->
+      <div id="sidebar">
+        <div id="players">
+          <h3>Players</h3>
+          <!-- Player list will be populated here -->
         </div>
-        <input type="text" id="chatInput" placeholder="Type a message...">
-        <button id="sendChatBtn">Send</button>
-      </div>
+        <div id="chat">
+          <h3>Chat</h3>
+          <div id="chatMessages">
+            <!-- Chat messages will appear here -->
+          </div>
+          <input type="text" id="chatInput" placeholder="Type a message...">
+          <button id="sendChatBtn">Send</button>
+        </div>
     </div>
 
     <!-- Main Content -->
-    <div id="mainContent" style="display: none">
+    <div id="mainContent">
       <!-- Existing game content -->
       <h2>Online SET Game</h2>
       <div id="gameBoard"></div>
@@ -421,7 +421,7 @@
       playerId = null;
       // Show the join screen
       document.getElementById('joinScreen').style.display = 'block';
-      document.getElementById('gameScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'none';
     }
 
     // Function to set up listener for player's data removal
