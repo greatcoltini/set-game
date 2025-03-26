@@ -452,10 +452,12 @@
                 console.error('Error clearing players:', error);
               });
 
-            // Clear the chat messages
+            // Clear the chat messages in the database
             chatRef.set(null)
               .then(() => {
                 console.log('Chat messages cleared successfully.');
+                // Clear the chat messages from the UI
+                document.getElementById('chatMessages').innerHTML = '';
               })
               .catch(error => {
                 console.error('Error clearing chat messages:', error);
