@@ -10,8 +10,8 @@
     }
     #gameBoard {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(4, 1fr); /* 4 cards per row */
+      gap: 20px; /* Increase the gap between cards */
       margin: 20px 0;
     }
     .card {
@@ -20,6 +20,7 @@
       text-align: center;
       cursor: pointer;
       user-select: none;
+      transition: transform 0.2s ease; /* Smooth transition for scaling */
     }
     .selected {
       border-color: red;
@@ -78,6 +79,59 @@
       flex-grow: 1;
     }
 
+    .highlight {
+      border: 3px solid yellow; /* Highlight color */
+    }
+
+    /* Hover animation: slowly increase and decrease size */
+    .card:hover {
+      animation: pulse 1s infinite; /* Pulse animation */
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1); /* Normal size */
+      }
+      50% {
+        transform: scale(1.1); /* Slightly larger */
+      }
+    }
+
+    /* Selected card: slightly enlarge */
+    .card.selected {
+      transform: scale(1.15); /* Slightly larger */
+      transition: transform 0.2s ease; /* Smooth transition */
+    }
+
+    .plus-one {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 4rem;
+      font-weight: bold;
+      color: green;
+      opacity: 1;
+      animation: fadeOut 1.5s ease forwards;
+      z-index: 1000;
+      pointer-events: none; /* Prevent interaction */
+    }
+
+    @keyframes fadeOut {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -60%) scale(1.2); /* Slightly enlarge and move up */
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -70%) scale(1.4); /* Fade out and move further up */
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -117,6 +171,7 @@
       <!-- Admin Controls -->
       <div id="adminControls" style="margin-top: 20px;">
         <button id="resetGameBtn">Reset Game</button>
+        <button id="toggleDebugBtn">Toggle Debug</button> <!-- Debug toggle button -->
       </div>
     </div>
   </div>
@@ -142,6 +197,7 @@
     // Global variables
     var playerId = null;
     var selectedCards = [];
+    let debugMode = false; // Global variable to track debug mode
 
     // Utility functions for the SET game
     function createDeck() {
@@ -202,11 +258,16 @@
         if (!game) return;
         let { board, deck } = game;
 
-        // Keep adding cards until a valid set is found or the deck is empty
+        // Ensure deck is defined
+        deck = deck || [];
+
+        // Keep adding cards in groups of 3 until a valid set is found or the deck is empty
         while (!hasValidSet(board) && deck.length > 0) {
-          board.push(deck.shift());
+          const cardsToAdd = deck.splice(0, Math.min(3, deck.length)); // Take up to 3 cards
+          board.push(...cardsToAdd);
         }
 
+        // Update the game state in the database
         database.ref('game').update({ board, deck });
       });
     }
@@ -282,9 +343,13 @@
         boardDiv.appendChild(cardDiv);
       });
 
-        // Update deck count
-      database.ref('game/deck').once('value', function (snapshot) {
-        document.getElementById('deckCount').innerText = `Cards Remaining: ${snapshot.val()?.length || 0}`;
+      // Update deck count
+      database.ref('game/deck').once('value', function(snapshot) {
+        const deck = snapshot.val() || [];
+        document.getElementById('deckCount').innerText = `Cards Remaining: ${deck.length}`;
+        if (checkGameEnd(board, deck)) {
+          document.getElementById('message').innerText = 'Game Over! No more sets and the deck is empty.';
+        }
       });
     }
 
@@ -298,23 +363,30 @@
         selectedCards.push({ index, card });
         if (selectedCards.length === 3) {
           if (isSet(selectedCards.map(item => item.card))) {
+            showPlusOne(); // Show the +1 animation
             database.ref('game').once('value').then(function(snapshot) {
               const game = snapshot.val();
               const newBoard = game.board.slice();
+              let deck = game.deck || []; // Ensure deck is defined
               selectedCards.sort((a, b) => b.index - a.index);
               selectedCards.forEach(selection => {
-                if (game.deck.length > 0) {
-                  newBoard[selection.index] = game.deck.shift();
+                if (deck.length > 0) {
+                  newBoard[selection.index] = deck.shift();
                 } else {
                   newBoard.splice(selection.index, 1);
                 }
               });
               database.ref('game').update({
                 board: newBoard,
-                deck: game.deck,
+                deck: deck,
                 lastMove: { player: playerId, time: Date.now() }
-              }).then(() => ensureValidSet()); // Ensure a valid set exists after update
-              
+              }).then(() => {
+                ensureValidSet();
+                if (checkGameEnd(newBoard, deck)) {
+                  document.getElementById('message').innerText = 'Game Over! No more sets and the deck is empty.';
+                }
+              });
+
               database.ref('players/' + playerId).transaction(function(player) {
                 if (player) {
                   player.score = (player.score || 0) + 1;
@@ -497,6 +569,113 @@
         database.ref('game/reset').set(false);
       }
     });
+
+    function checkGameEnd(board, deck) {
+      deck = deck || []; // Ensure deck is defined
+      if (deck.length === 0 && !hasValidSet(board)) {
+        // Notify players that the game has ended
+        database.ref('game').update({ gameOver: true }).then(() => {
+          handleGameOver(); // Call the function to declare the winner
+        });
+        return true;
+      }
+      return false;
+    }
+
+    // Function to find all valid sets on the board
+    function findAllSets(board) {
+      const sets = [];
+      for (let i = 0; i < board.length; i++) {
+        for (let j = i + 1; j < board.length; j++) {
+          for (let k = j + 1; k < board.length; k++) {
+            if (isSet([board[i], board[j], board[k]])) {
+              sets.push([i, j, k]);
+            }
+          }
+        }
+      }
+      return sets;
+    }
+
+    // Function to highlight valid sets
+    function highlightSets(board) {
+      const sets = findAllSets(board);
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => card.style.border = ''); // Clear previous highlights
+
+      // Define a list of colors to cycle through
+      const colors = ['yellow', 'blue', 'green', 'orange', 'purple', 'pink', 'cyan'];
+
+      sets.forEach((set, setIndex) => {
+        const color = colors[setIndex % colors.length]; // Cycle through colors
+        set.forEach(index => {
+          cards[index].style.border = `3px solid ${color}`; // Highlight the cards in the set
+        });
+      });
+    }
+
+    // Toggle debug mode
+    document.getElementById('toggleDebugBtn').addEventListener('click', function() {
+      debugMode = !debugMode;
+      if (debugMode) {
+        database.ref('game').once('value').then(function(snapshot) {
+          const game = snapshot.val();
+          if (game && game.board) {
+            highlightSets(game.board);
+          }
+        });
+      } else {
+        // Clear highlights when debug mode is turned off
+        document.querySelectorAll('.card').forEach(card => card.classList.remove('highlight'));
+      }
+    });
+
+    function handleGameOver() {
+      database.ref('players').once('value').then(function(snapshot) {
+        const players = snapshot.val() || {};
+        let winner = null;
+        let highestScore = -1;
+    
+        // Find the player with the highest score
+        for (let playerId in players) {
+          const player = players[playerId];
+          if (player.score > highestScore) {
+            highestScore = player.score;
+            winner = player.name;
+          }
+        }
+    
+        // Display the winner
+        if (winner) {
+          alert(`Game Over! The winner is ${winner} with a score of ${highestScore}!`);
+        } else {
+          alert('Game Over! No winner could be determined.');
+        }
+    
+        // // Optionally, reset the game state
+        // resetGame();
+      });
+    }
+
+    database.ref('game/gameOver').on('value', function(snapshot) {
+      if (snapshot.val() === true) {
+        handleGameOver();
+      }
+    });
+
+    function showPlusOne() {
+      const plusOneDiv = document.createElement('div');
+      plusOneDiv.className = 'plus-one';
+      plusOneDiv.textContent = '+1';
+    
+      // Append to the body
+      document.body.appendChild(plusOneDiv);
+    
+      // Remove the element after the animation ends
+      setTimeout(() => {
+        plusOneDiv.remove();
+      }, 1500); // Match the duration of the animation
+    }
 
   </script>
 </body>
