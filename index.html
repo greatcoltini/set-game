@@ -404,6 +404,36 @@
       }
     }
 
+
+    // Function to handle player removal
+    function onPlayerRemoved() {
+      alert('The game has been reset. Please rejoin to continue playing.');
+      // Clear the stored playerId
+      playerId = null;
+      // Show the join screen
+      document.getElementById('joinScreen').style.display = 'block';
+      document.getElementById('gameScreen').style.display = 'none';
+    }
+
+    // Function to set up listener for player's data removal
+    function setupPlayerRemovalListener() {
+      if (playerId) {
+        const playerRef = database.ref('players/' + playerId);
+        playerRef.on('value', function(snapshot) {
+          if (!snapshot.exists()) {
+            // Player data has been removed
+            onPlayerRemoved();
+            // Detach the listener after handling
+            playerRef.off('value');
+          }
+        });
+      }
+    }
+
+    // Call this function after a player joins successfully
+    setupPlayerRemovalListener();
+
+
   </script>
 </body>
 </html>
