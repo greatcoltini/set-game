@@ -132,6 +132,10 @@
       }
     }
 
+    #mainContent {
+      display: none; /* Hide the game content by default */
+    }
+
   </style>
 </head>
 <body>
@@ -422,11 +426,12 @@
     // Function to reset the game state
     function resetGame() {
       // Confirm before resetting
-      if (confirm('Are you sure you want to reset the game? This will clear all game data and force all players to rejoin.')) {
+      if (confirm('Are you sure you want to reset the game? This will clear all game data, player data, and chat messages.')) {
         // Set the reset flag in Firebase
         database.ref('game/reset').set(true)
           .then(() => {
             console.log('Game reset flag set successfully.');
+
             // Clear the game state
             gameRef.set(null)
               .then(() => {
@@ -446,6 +451,15 @@
               .catch(error => {
                 console.error('Error clearing players:', error);
               });
+
+            // Clear the chat messages
+            chatRef.set(null)
+              .then(() => {
+                console.log('Chat messages cleared successfully.');
+              })
+              .catch(error => {
+                console.error('Error clearing chat messages:', error);
+              });
           })
           .catch(error => {
             console.error('Error setting reset flag:', error);
@@ -464,6 +478,7 @@
         document.getElementById('joinError').innerText = 'Please enter a name.';
         return;
       }
+
       // Check if there are already 15 players
       database.ref('players').once('value').then(function(snapshot) {
         const players = snapshot.val() || {};
@@ -471,14 +486,17 @@
           document.getElementById('joinError').innerText = 'Game is full. Maximum 15 players allowed.';
           return;
         }
+
         // Create a unique player ID and add player to Firebase
         playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         database.ref('players/' + playerId).set({
           name: name,
           score: 0
         });
+
         // Store the player name globally
-        window.playerName = name; // Add this line
+        window.playerName = name;
+
         // Switch from join screen to game screen
         document.getElementById('joinScreen').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
@@ -676,6 +694,14 @@
         plusOneDiv.remove();
       }, 1500); // Match the duration of the animation
     }
+
+    window.addEventListener('load', function() {
+      // Ensure the user is redirected to the join screen if not logged in
+      if (!playerId) {
+        document.getElementById('joinScreen').style.display = 'block';
+        document.getElementById('mainContent').style.display = 'none';
+      }
+    });
 
   </script>
 </body>
