@@ -180,18 +180,48 @@
       });
     }
 
+    // Function to check if there is at least one valid set on the board
+    function hasValidSet(board) {
+      for (let i = 0; i < board.length; i++) {
+        for (let j = i + 1; j < board.length; j++) {
+          for (let k = j + 1; k < board.length; k++) {
+            if (isSet([board[i], board[j], board[k]])) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    // Function to ensure there is a valid set on the board
+    function ensureValidSet() {
+      database.ref('game').once('value').then(function(snapshot) {
+        const game = snapshot.val();
+        if (!game) return;
+        let { board, deck } = game;
+
+        // Keep adding cards until a valid set is found or the deck is empty
+        while (!hasValidSet(board) && deck.length > 0) {
+          board.push(deck.shift());
+        }
+
+        database.ref('game').update({ board, deck });
+      });
+    }
+
     // Initialize game state if it doesn't exist
+    // Modify the game state initialization to ensure a valid set is present
     function initGameState() {
       database.ref('game').once('value', function(snapshot) {
         if (!snapshot.exists()) {
           const deck = shuffle(createDeck());
-          // Deal initial 12 cards to the board
           const board = deck.splice(0, 12);
           database.ref('game').set({
             deck: deck,
             board: board,
             lastMove: null
-          });
+          }).then(() => ensureValidSet()); // Ensure a valid set exists
         }
       });
     }
@@ -252,7 +282,7 @@
       });
     }
 
-    // Handle clicking on a card
+    // After each move, check if a valid set exists
     function handleCardClick(index, cardDiv, card) {
       if (cardDiv.classList.contains('selected')) {
         cardDiv.classList.remove('selected');
@@ -262,11 +292,9 @@
         selectedCards.push({ index, card });
         if (selectedCards.length === 3) {
           if (isSet(selectedCards.map(item => item.card))) {
-            // Valid set found – update game state
             database.ref('game').once('value').then(function(snapshot) {
               const game = snapshot.val();
               const newBoard = game.board.slice();
-              // Sort selected indices descending so removal/replacement doesn't mess up ordering
               selectedCards.sort((a, b) => b.index - a.index);
               selectedCards.forEach(selection => {
                 if (game.deck.length > 0) {
@@ -279,8 +307,8 @@
                 board: newBoard,
                 deck: game.deck,
                 lastMove: { player: playerId, time: Date.now() }
-              });
-              // Update player's score
+              }).then(() => ensureValidSet()); // Ensure a valid set exists after update
+              
               database.ref('players/' + playerId).transaction(function(player) {
                 if (player) {
                   player.score = (player.score || 0) + 1;
@@ -290,7 +318,6 @@
               clearSelection();
             });
           } else {
-            // Not a valid set – show a message then clear selection
             document.getElementById('message').innerText = 'Not a valid set!';
             setTimeout(function() {
               document.getElementById('message').innerText = '';
@@ -300,6 +327,7 @@
         }
       }
     }
+
 
     // Clear card selection UI
     function clearSelection() {
