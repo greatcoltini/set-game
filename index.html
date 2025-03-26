@@ -48,6 +48,11 @@
     <div id="players"></div>
     <div id="gameBoard"></div>
     <div id="message"></div>
+    <!-- Admin Controls -->
+    <div id="adminControls" style="margin-top: 20px;">
+      <button id="resetGameBtn">Reset Game</button>
+    </div>
+
   </div>
 
   <!-- Firebase (using compat libraries for simplicity) -->
@@ -237,6 +242,40 @@
         card.classList.remove('selected');
       });
     }
+
+    // Reference to the game and players in the database
+    const gameRef = database.ref('game');
+    const playersRef = database.ref('players');
+
+    // Function to reset the game state
+    function resetGame() {
+      // Confirm before resetting
+      if (confirm('Are you sure you want to reset the game? This will clear all game data and player information.')) {
+        // Clear the game state
+        gameRef.set(null)
+          .then(() => {
+            console.log('Game state cleared successfully.');
+            // Reinitialize the game state
+            initGameState();
+          })
+          .catch(error => {
+            console.error('Error clearing game state:', error);
+          });
+
+        // Clear the players
+        playersRef.set(null)
+          .then(() => {
+            console.log('Players cleared successfully.');
+          })
+          .catch(error => {
+            console.error('Error clearing players:', error);
+          });
+      }
+    }
+
+    // Add event listener to the reset button
+    document.getElementById('resetGameBtn').addEventListener('click', resetGame);
+
 
     // Player join logic
     document.getElementById('joinBtn').addEventListener('click', function() {
