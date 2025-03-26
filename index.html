@@ -81,7 +81,16 @@
   </style>
 </head>
 <body>
-  <div id="container">
+
+    <!-- Join Screen -->
+    <div id="joinScreen">
+      <h2>Join Game</h2>
+      <input type="text" id="playerName" placeholder="Enter your name">
+      <button id="joinBtn">Join Game</button>
+      <div id="joinError" style="color: red;"></div>
+    </div>
+
+  <div id="container mainContent" style="display: none">
     <!-- Sidebar for Players and Chat -->
     <div id="sidebar">
       <div id="players">
@@ -99,7 +108,7 @@
     </div>
 
     <!-- Main Content -->
-    <div id="mainContent">
+    <div id="mainContent" style="display: none">
       <!-- Existing game content -->
       <h2>Online SET Game</h2>
       <div id="gameBoard"></div>
