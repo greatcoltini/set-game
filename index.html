@@ -112,6 +112,7 @@
       <!-- Existing game content -->
       <h2>Online SET Game</h2>
       <div id="gameBoard"></div>
+      <div id="deckCount">Cards Remaining: 0</div>
       <div id="message"></div>
       <!-- Admin Controls -->
       <div id="adminControls" style="margin-top: 20px;">
@@ -280,6 +281,11 @@
         // Append the card div to the board
         boardDiv.appendChild(cardDiv);
       });
+
+        // Update deck count
+      database.ref('game/deck').once('value', function (snapshot) {
+        document.getElementById('deckCount').innerText = `Cards Remaining: ${snapshot.val()?.length || 0}`;
+      });
     }
 
     // After each move, check if a valid set exists
@@ -364,6 +370,24 @@
           .catch(error => {
             console.error('Error clearing players:', error);
           });
+
+        // Prompt the player to enter a new username
+        const newName = prompt('Enter a new username to rejoin the game:');
+        if (newName) {
+          playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          database.ref('players/' + playerId).set({
+            name: newName,
+            score: 0
+          });
+          // Show the game screen again
+          document.getElementById('joinScreen').style.display = 'none';
+          document.getElementById('mainContent').style.display = 'block';
+        } else {
+          alert('You must enter a username to rejoin the game.');
+          // Show the join screen
+          document.getElementById('joinScreen').style.display = 'block';
+          document.getElementById('mainContent').style.display = 'none';
+        }
       }
     }
 
