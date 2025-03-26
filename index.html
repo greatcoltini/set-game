@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Online SET Game</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    #gameBoard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .card {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .selected {
+      border-color: red;
+    }
+    #players {
+      margin-bottom: 15px;
+    }
+    #joinScreen, #gameScreen {
+      max-width: 600px;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Join Screen -->
+  <div id="joinScreen">
+    <h2>Join Game</h2>
+    <input type="text" id="playerName" placeholder="Enter your name">
+    <button id="joinBtn">Join Game</button>
+    <div id="joinError" style="color: red;"></div>
+  </div>
+
+  <!-- Main Game Screen -->
+  <div id="gameScreen" style="display: none;">
+    <h2>Online SET Game</h2>
+    <div id="players"></div>
+    <div id="gameBoard"></div>
+    <div id="message"></div>
+  </div>
+
+  <!-- Firebase (using compat libraries for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+  <script>
+    // TODO: Replace the following with your Firebase project configuration.
+	  const firebaseConfig = {
+		apiKey: "AIzaSyDSQvcXXw-pQBuiLZAsfHD8yWDF4c34pYU",
+		authDomain: "set-test-game.firebaseapp.com",
+		projectId: "set-test-game",
+		storageBucket: "set-test-game.firebasestorage.app",
+		messagingSenderId: "992674610545",
+		appId: "1:992674610545:web:4317734688a5b7cc8d4ad0",
+		measurementId: "G-8KEBPK2RSW"
+	  };
+    firebase.initializeApp(firebaseConfig);
+    var database = firebase.database();
+
+    // Global variables
+    var playerId = null;
+    var selectedCards = [];
+
+    // Utility functions for the SET game
+    function createDeck() {
+      const deck = [];
+      const shapes   = ['oval', 'squiggle', 'diamond'];
+      const colors   = ['red', 'green', 'purple'];
+      const shadings = ['solid', 'striped', 'open'];
+      const numbers  = [1, 2, 3];
+      for (let s of shapes) {
+        for (let c of colors) {
+          for (let sh of shadings) {
+            for (let n of numbers) {
+              deck.push({ shape: s, color: c, shading: sh, number: n });
+            }
+          }
+        }
+      }
+      return deck;
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    // Check if three cards form a valid SET
+    function isSet(cards) {
+      if (cards.length !== 3) return false;
+      const attributes = ['shape', 'color', 'shading', 'number'];
+      return attributes.every(attr => {
+        const values = cards.map(card => card[attr]);
+        return (values[0] === values[1] && values[1] === values[2]) ||
+               (new Set(values).size === 3);
+      });
+    }
+
+    // Initialize game state if it doesn't exist
+    function initGameState() {
+      database.ref('game').once('value', function(snapshot) {
+        if (!snapshot.exists()) {
+          const deck = shuffle(createDeck());
+          // Deal initial 12 cards to the board
+          const board = deck.splice(0, 12);
+          database.ref('game').set({
+            deck: deck,
+            board: board,
+            lastMove: null
+          });
+        }
+      });
+    }
+    initGameState();
+
+    // Listen for game state changes to update the board
+    database.ref('game').on('value', function(snapshot) {
+      const game = snapshot.val();
+      if (game) {
+        updateBoard(game.board);
+      }
+    });
+
+    // Listen for players list changes
+    database.ref('players').on('value', function(snapshot) {
+      const players = snapshot.val() || {};
+      updatePlayersList(players);
+    });
+
+    // Update the players list UI
+    function updatePlayersList(players) {
+      const playersDiv = document.getElementById('players');
+      playersDiv.innerHTML = '<h3>Players</h3>';
+      for (let id in players) {
+        playersDiv.innerHTML += '<div>' + players[id].name + ': ' + players[id].score + '</div>';
+      }
+    }
+
+    // Render the board
+    function updateBoard(board) {
+      const boardDiv = document.getElementById('gameBoard');
+      boardDiv.innerHTML = '';
+      board.forEach((card, index) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.dataset.index = index;
+        cardDiv.innerHTML =
+          '<div>' + card.number + '</div>' +
+          '<div>' + card.shading + ' ' + card.color + ' ' + card.shape + '</div>';
+        cardDiv.addEventListener('click', function() {
+          handleCardClick(index, cardDiv, card);
+        });
+        boardDiv.appendChild(cardDiv);
+      });
+    }
+
+    // Handle clicking on a card
+    function handleCardClick(index, cardDiv, card) {
+      if (cardDiv.classList.contains('selected')) {
+        cardDiv.classList.remove('selected');
+        selectedCards = selectedCards.filter(c => c.index !== index);
+      } else {
+        cardDiv.classList.add('selected');
+        selectedCards.push({ index, card });
+        if (selectedCards.length === 3) {
+          if (isSet(selectedCards.map(item => item.card))) {
+            // Valid set found – update game state
+            database.ref('game').once('value').then(function(snapshot) {
+              const game = snapshot.val();
+              const newBoard = game.board.slice();
+              // Sort selected indices descending so removal/replacement doesn't mess up ordering
+              selectedCards.sort((a, b) => b.index - a.index);
+              selectedCards.forEach(selection => {
+                if (game.deck.length > 0) {
+                  newBoard[selection.index] = game.deck.shift();
+                } else {
+                  newBoard.splice(selection.index, 1);
+                }
+              });
+              database.ref('game').update({
+                board: newBoard,
+                deck: game.deck,
+                lastMove: { player: playerId, time: Date.now() }
+              });
+              // Update player's score
+              database.ref('players/' + playerId).transaction(function(player) {
+                if (player) {
+                  player.score = (player.score || 0) + 1;
+                }
+                return player;
+              });
+              clearSelection();
+            });
+          } else {
+            // Not a valid set – show a message then clear selection
+            document.getElementById('message').innerText = 'Not a valid set!';
+            setTimeout(function() {
+              document.getElementById('message').innerText = '';
+              clearSelection();
+            }, 1000);
+          }
+        }
+      }
+    }
+
+    // Clear card selection UI
+    function clearSelection() {
+      selectedCards = [];
+      document.querySelectorAll('.card.selected').forEach(function(card) {
+        card.classList.remove('selected');
+      });
+    }
+
+    // Player join logic
+    document.getElementById('joinBtn').addEventListener('click', function() {
+      const name = document.getElementById('playerName').value.trim();
+      if (!name) {
+        document.getElementById('joinError').innerText = 'Please enter a name.';
+        return;
+      }
+      // Check if there are already 15 players
+      database.ref('players').once('value').then(function(snapshot) {
+        const players = snapshot.val() || {};
+        if (Object.keys(players).length >= 15) {
+          document.getElementById('joinError').innerText = 'Game is full. Maximum 15 players allowed.';
+          return;
+        }
+        // Create a unique player ID and add player to Firebase
+        playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        database.ref('players/' + playerId).set({
+          name: name,
+          score: 0
+        });
+        // Switch from join screen to game screen
+        document.getElementById('joinScreen').style.display = 'none';
+        document.getElementById('gameScreen').style.display = 'block';
+      });
+    });
+  </script>
+</body>
+</html>
