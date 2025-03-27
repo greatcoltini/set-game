@@ -136,7 +136,7 @@
       display: none; /* Hide the game content by default */
     }
 
-    /* Full-screen swirling background */
+    /* Full-screen gradient background with moving squiggles */
     #movingBackground {
       position: fixed;
       top: 0;
@@ -144,32 +144,54 @@
       width: 100%;
       height: 100%;
       z-index: -1; /* Place it behind all content */
-      background: radial-gradient(circle, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1);
+      background: linear-gradient(120deg, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1); /* Base gradient */
       background-size: 200% 200%; /* Larger size for smooth animation */
-      animation: swirl 10s infinite linear; /* Swirling animation */
+      animation: gradientBackground 15s infinite alternate; /* Animate the gradient */
+      overflow: hidden; /* Prevent squiggles from overflowing */
     }
 
-    /* Swirling animation */
-    @keyframes swirl {
+    /* Moving squiggles */
+    #movingBackground::before,
+    #movingBackground::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -150%; /* Start off-screen */
+      width: 300%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.2) 10px,
+        rgba(255, 255, 255, 0.2) 20px
+      ); /* Squiggle pattern */
+      animation: moveSquiggles 10s linear infinite;
+    }
+
+    /* Offset the second squiggle layer */
+    #movingBackground::after {
+      animation-delay: 5s; /* Delay for staggered effect */
+      opacity: 0.5; /* Make it subtler */
+    }
+
+    /* Animation for the gradient background */
+    @keyframes gradientBackground {
       0% {
-        background-position: 0% 0%;
-        transform: rotate(0deg);
-      }
-      25% {
-        background-position: 50% 50%;
-        transform: rotate(90deg);
-      }
-      50% {
-        background-position: 100% 100%;
-        transform: rotate(180deg);
-      }
-      75% {
-        background-position: 50% 50%;
-        transform: rotate(270deg);
+        background-position: 0% 50%;
       }
       100% {
-        background-position: 0% 0%;
-        transform: rotate(360deg);
+        background-position: 100% 50%;
+      }
+    }
+
+    /* Animation for the squiggles */
+    @keyframes moveSquiggles {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(150%); /* Move completely off-screen */
       }
     }
   </style>
@@ -511,23 +533,39 @@
         return;
       }
 
-      // Check if there are already 15 players
+      // Check if the name already exists in the players database
       database.ref('players').once('value').then(function(snapshot) {
         const players = snapshot.val() || {};
-        if (Object.keys(players).length >= 15) {
-          document.getElementById('joinError').innerText = 'Game is full. Maximum 15 players allowed.';
-          return;
+        let existingPlayerId = null;
+
+        // Check if the name matches an existing player
+        for (let id in players) {
+          if (players[id].name === name) {
+            existingPlayerId = id;
+            break;
+          }
         }
 
-        // Create a unique player ID and add player to Firebase
-        playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        database.ref('players/' + playerId).set({
-          name: name,
-          score: 0
-        });
+        if (existingPlayerId) {
+          // Reuse the existing player
+          playerId = existingPlayerId;
+          window.playerName = name;
+          console.log(`Logged in as existing player: ${name}`);
+        } else {
+          // Create a new player
+          if (Object.keys(players).length >= 15) {
+            document.getElementById('joinError').innerText = 'Game is full. Maximum 15 players allowed.';
+            return;
+          }
 
-        // Store the player name globally
-        window.playerName = name;
+          playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          database.ref('players/' + playerId).set({
+            name: name,
+            score: 0
+          });
+          window.playerName = name;
+          console.log(`Created new player: ${name}`);
+        }
 
         // Switch from join screen to game screen
         document.getElementById('joinScreen').style.display = 'none';
