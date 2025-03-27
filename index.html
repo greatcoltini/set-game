@@ -10,17 +10,28 @@
     }
     #gameBoard {
       display: grid;
-      grid-template-columns: repeat(4, 1fr); /* 4 cards per row */
-      gap: 20px; /* Increase the gap between cards */
-      margin: 20px 0;
+      grid-template-columns: repeat(4, 1fr); /* Always 4 cards per row */
+      grid-template-rows: repeat(3, 1fr); /* Always 3 rows */
+      gap: 10px; /* Space between cards */
+      margin: 20px auto; /* Center the grid vertically and horizontally */
+      max-width: 35vw; /* Limit the width of the grid */
+      height: calc(100vh - 200px); /* Adjust height to fit within the viewport */
     }
     .card {
       border: 1px solid #ccc;
-      padding: 10px;
       text-align: center;
       cursor: pointer;
       user-select: none;
       transition: transform 0.2s ease; /* Smooth transition for scaling */
+      aspect-ratio: 2 / 3; /* Maintain a 2:3 aspect ratio */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .card img {
+      width: 100%; /* Make the image fill the card */
+      height: 100%; /* Ensure the image respects the aspect ratio */
+      object-fit: contain; /* Ensure the image fits nicely within the card */
     }
     .selected {
       border-color: red;
@@ -177,10 +188,11 @@
 
   <!-- Join Screen -->
   <div id="joinScreen">
-    <h2>Join Game</h2>
+    <h2>SET - Join Game</h2>
     <input type="text" id="playerName" placeholder="Enter your name">
     <button id="joinBtn">Join Game</button>
     <div id="joinError" style="color: red;"></div>
+    <a href="https://officialgamerules.org/game-rules/set/#:~:text=How%20to%20Play%20SET%201%20Objective%20Identify%20as,remaining%20cards.%20...%205%20Notes%2FVariations%20Special%20Rules%3A%20" target="_blank">How To Play</a>
   </div>
 
   <div id="container">
@@ -195,16 +207,16 @@
         <input type="text" id="chatInput" placeholder="Type a message...">
         <button id="sendChatBtn">Send</button>
       </div>
-    </div>
-    <div id="mainContent">
-      <h2>Online SET Game</h2>
-      <div id="gameBoard"></div>
-      <div id="deckCount">Cards Remaining: 0</div>
-      <div id="message"></div>
       <div id="adminControls">
         <button id="resetGameBtn">Reset Game</button>
         <button id="toggleDebugBtn">Toggle Debug</button>
       </div>
+      <div id="deckCount">Cards Remaining: 0</div>
+      <div id="message"></div>
+    </div>
+    <div id="mainContent">
+      <h2 style="text-align:center">SET </h2>
+      <div id="gameBoard"></div>
     </div>
   </div>
 
